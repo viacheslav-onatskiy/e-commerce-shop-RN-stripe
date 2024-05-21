@@ -26,47 +26,57 @@ router.get('/cancel', (req, res) => {
 });
 
 router.post('/create-checkout-session', async (req, res) => {
-  const customer = await stripe.customers.create({
-    metadata: {
-      userId: req.body.userId,
-      cart: JSON.stringify(req.body.cartItems),
-    },
-  });
-
-  const line_items = req.body.cartItems.map((item) => {
-    return {
-      price_data: {
-        currency: 'usd',
-        product_data: {
-          name: item.name,
-          imageUrl: item.image,
-          description: item.desc,
-          metadata: {
-            id: item.id,
-          },
-        },
-        unit_amount: item.price * 100,
+  try {
+    const customer = await stripe.customers.create({
+      metadata: {
+        userId: req.body.userId,
+        cart: JSON.stringify(req.body.cartItems),
       },
-      quantity: item.cartQuantity,
-    };
-  });
-  const session = await stripe.checkout.sessions.create({
-    payment_method_types: ['card'],
+    });
+    console.log('/create-checkout-session customer:', customer);
 
-    phone_number_collection: {
-      enabled: false,
-    },
-    line_items,
-    mode: 'payment',
-    customer: customer.id,
-    success_url:
-      'https://e-commerce-shop-rn-stripe-production.up.railway.app/stripe/checkout-success',
-    cancel_url:
-      'https://e-commerce-shop-rn-stripe-production.up.railway.app/stripe/cancel',
-  });
+    const line_items = req.body.cartItems.map((item) => {
+      return {
+        price_data: {
+          currency: 'usd',
+          product_data: {
+            name: item.name,
+            imageUrl: item.image,
+            description: item.desc,
+            metadata: {
+              id: item.id,
+            },
+          },
+          unit_amount: item.price * 100,
+        },
+        quantity: item.cartQuantity,
+      };
+    });
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
 
-  // res.redirect(303, session.url);
-  res.send({ url: session.url });
+      phone_number_collection: {
+        enabled: false,
+      },
+      line_items,
+      mode: 'payment',
+      customer: customer.id,
+      success_url:
+        'https://e-commerce-shop-rn-stripe-production.up.railway.app/stripe/checkout-success',
+      cancel_url:
+        'https://e-commerce-shop-rn-stripe-production.up.railway.app/stripe/cancel',
+    });
+
+    // res.redirect(303, session.url);
+    // res.send({ url: session.url });
+
+    res.setHeader('Content-Type', 'application/json');
+    console.log('session.url:', session.url);
+    res.send({ url: session.url });
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).send({ error: 'Internal Server Error' });
+  }
 });
 
 // Create order function
